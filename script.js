@@ -3,7 +3,7 @@ let D={trades:[],settings:{name:"Trader",balance:10000,cur:"$",lev:100,mode:"usd
 try{const s=JSON.parse(localStorage.getItem(K));if(s)D={...D,...s,settings:{...D.settings,...s.settings}}}catch(e){}
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(D));return 1}catch(e){toast("Penyimpanan penuh. Hapus screenshot atau ekspor backup.");return 0}};
 let V="dashboard",F={f:"all",from:"",to:"",asset:""},A={r:"all"},cal=new Date(),E,PD=null,IM="replace",BX="";cal.setDate(1);
-const NAV=[["dashboard","Dashboard","▦"],["history","History","☰"],["analytics","Analytics","◔"],["backup","Backup","⇪"],["settings","Settings","◈"]];
+const NAV=[["dashboard","Dashboard","▦"],["history","History","☰"],["analytics","Analytics","◔"],["backup","Backup","⇪"],["settings","Settings","◈"],["ai","AI","◉"]];
 q("#nav").innerHTML=NAV.map(n=>`<button data-v="${n[0]}" onclick="go('${n[0]}')"><span>${n[2]}</span>${n[1]}</button>`).join("");
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const nowL=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
@@ -67,7 +67,7 @@ if(!ok){try{const a=document.createElement("a");a.href=URL.createObjectURL(new B
 if(ok){D.lastBackup=Date.now();save();BX="";toast("Backup siap")}else{BX=j;toast("Download tidak tersedia. Salin teks di bawah.")}render()}
 function pick(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result),d=j.data||j;if(!Array.isArray(d.trades))throw 0;PD=d;toast(d.trades.length+" trade siap diimpor")}catch(e){PD=null;toast("File backup tidak valid")}render()};r.readAsText(f)}
 function imp(){if(!PD)return toast("Pilih file backup dulu");const run=()=>{if(IM=="replace"){D.trades=PD.trades;if(PD.settings)D.settings={...D.settings,...PD.settings}}else{const ids=new Set(D.trades.map(t=>t.id));D.trades=[...D.trades,...PD.trades.filter(t=>!ids.has(t.id))]}PD=null;if(save()){render();toast("Import selesai")}};IM=="replace"?ask("Replace All akan menimpa semua data saat ini. Lanjutkan?",run):run()}
-function sett(){const S=D.settings;return `<h1>Settings</h1><div class="card stack"><label>Nama<input id="sn" value="${esc(S.name)}"></label><label>Saldo awal<input id="sb" type="number" step="any" value="${S.balance}"></label><label>Simbol mata uang<input id="sc" value="${esc(S.cur)}" maxlength="4"></label><label>Default leverage (x)<input id="sl" type="number" value="${S.lev}"></label><label>Default position size<select id="sm"><option value="usd" ${S.mode=="usd"?"selected":""}>USD Value</option><option value="lot" ${S.mode=="lot"?"selected":""}>Lot Size</option></select></label><button class="btn" onclick="saveS()">Save Settings</button></div><p class="mu sm">Pip dan P&amp;L dihitung otomatis dari harga: JPY 0.01, XAU 0.1, kripto dan indeks 1, lainnya 0.0001. Satu lot = 100.000 unit (XAU 100 oz). USD Value dihitung sebagai margin dikali leverage. Hasilnya estimasi.</p>`}
+function sett(){const S=D.settings;return `<h1>Settings</h1><div class="card stack"><label>Nama<input id="sn" value="${esc(S.name)}"></label><label>Saldo awal<input id="sb" type="number" step="any" value="${S.balance}"></label><label>Simbol mata uang<input id="sc" value="${esc(S.cur)}" maxlength="4"></label><label>Default leverage (x)<input id="sl" type="number" value="${S.lev}"></label><label>Default position size<select id="sm"><option value="usd" ${S.mode=="usd"?"selected":""}>USD Value</option><option value="lot" ${S.mode=="lot"?"selected":""}>Lot Size</option></select></label><button class="btn" onclick="saveS()">Save Settings</button></div><h2>Groq AI</h2><div class="card stack"><label>Groq API Key<input id="gk" type="password" autocomplete="off" placeholder="gsk_..." value="${esc(G.key)}"></label><label>Model<input id="gm" list="gml" autocomplete="off" value="${esc(G.model)}" placeholder="qwen/qwen3.8-27b"><datalist id="gml">${(G.models.length?G.models:["qwen/qwen3.8-27b"]).map(m=>`<option>${esc(m)}</option>`).join("")}</datalist></label><div class="row"><button class="btn sec" onclick="loadM()">Muat daftar model</button><button class="btn" onclick="saveG()">Save AI</button></div><p class="mu sm">API key disimpan hanya di browser ini dan tidak ikut file backup. Jangan isi di perangkat bersama. Analisa screenshot butuh model yang mendukung gambar; daftar terbaru ada di console.groq.com/docs/vision.</p></div><p class="mu sm">Pip dan P&amp;L dihitung otomatis dari harga: JPY 0.01, XAU 0.1, kripto dan indeks 1, lainnya 0.0001. Satu lot = 100.000 unit (XAU 100 oz). USD Value dihitung sebagai margin dikali leverage. Hasilnya estimasi.</p>`}
 function saveS(){const g=i=>q("#"+i).value;D.settings={name:g("sn")||"Trader",balance:+g("sb")||0,cur:g("sc")||"$",lev:+g("sl")||1,mode:g("sm")};if(save())toast("Pengaturan tersimpan")}
 /* ---- form trade ---- */
 const seg=(k,o,l)=>`<div class="seg" data-k="${k}">${o.map((v,i)=>`<button type="button" data-v="${v}" class="${E[k]==v?"on":""}" onclick="sg(this)">${l[i]}</button>`).join("")}</div>`;
@@ -104,7 +104,45 @@ if(er)return toast(er);
 if(!t.id){t.id=Date.now().toString(36);D.trades.push(t)}else D.trades[D.trades.findIndex(x=>x.id==t.id)]=t;
 if(save()){closeM();render();toast("Trade tersimpan")}}
 function delT(){ask("Hapus trade ini?",()=>{D.trades=D.trades.filter(t=>t.id!=E.id);save();closeM();render()})}
+/* ---- Groq AI ---- */
+const API="https://api.groq.com/openai/v1",SYS="Kamu adalah AI coach trading yang membantu trader mengevaluasi jurnal dan chart. Jawab dalam bahasa Indonesia, ringkas dan terstruktur. Untuk screenshot chart: jelaskan struktur tren, level support dan resistance, pola candle, area entry, SL, TP yang masuk akal, serta risikonya. Jangan menjamin hasil. Ini edukasi, bukan nasihat keuangan.";
+let G={key:"",model:"qwen/qwen3.8-27b",ctx:true,models:[]},CH=[],AI={img:null,busy:false};
+try{Object.assign(G,JSON.parse(localStorage.getItem("tj_ai"))||{})}catch(e){}
+if(G.model=="qwen/qwen3.6-27b")G.model="qwen/qwen3.8-27b";
+try{CH=JSON.parse(localStorage.getItem("tj_chat"))||[]}catch(e){}
+const persistG=()=>{try{localStorage.setItem("tj_ai",JSON.stringify(G))}catch(e){}};
+const saveCh=()=>{try{localStorage.setItem("tj_chat",JSON.stringify(CH.slice(-40).map(m=>({r:m.r,t:m.t,i:m.img||m.i?1:0,err:m.err}))))}catch(e){}};
+const md=s=>esc(String(s).replace(/<think>[\s\S]*?(<\/think>|$)/g,"").trim()).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/^#{1,4} (.*)$/gm,"<b>$1</b>").replace(/^[-*] /gm,"• ").replace(/`([^`]+)`/g,"<code>$1</code>");
+const errM=e=>e.message=="Failed to fetch"?"koneksi gagal. Cek internet lalu coba lagi.":e.message;
+function saveG(){G.key=q("#gk").value.trim();G.model=q("#gm").value.trim()||"qwen/qwen3.8-27b";persistG();toast("Pengaturan AI tersimpan")}
+async function loadM(){G.key=q("#gk").value.trim();G.model=q("#gm").value.trim()||G.model;if(!G.key)return toast("Isi API key dulu");
+try{const r=await fetch(API+"/models",{headers:{Authorization:"Bearer "+G.key}}),j=await r.json().catch(()=>({}));if(!r.ok)throw new Error((j.error&&j.error.message)||"HTTP "+r.status);
+G.models=(j.data||[]).map(m=>m.id).filter(id=>!/whisper|tts|guard|embed/i.test(id)).sort();persistG();render();toast(G.models.length+" model dimuat")}catch(e){persistG();toast("Gagal memuat model: "+errM(e))}}
+function ai(){return `<h1>AI Coach</h1><div class="card stack"><label class="row" style="display:flex"><input type="checkbox" ${G.ctx?"checked":""} onchange="G.ctx=this.checked;persistG()"> Sertakan data jurnal saya dalam konsultasi</label><div class="mu sm">Model: <span class="mono">${esc(G.model)}</span>${G.key?"":` <a class="g" onclick="go('settings')">Atur API key</a>`}</div></div>
+<div class="row">${["Analisa screenshot chart ini","Evaluasi performa jurnal saya","Apa yang harus saya perbaiki?"].map(p=>`<button class="chip" onclick="aiQ(this.textContent)">${p}</button>`).join("")}<button class="chip ml" onclick="clrCh()">Hapus chat</button></div>
+<div id="chat" class="stack"></div>
+<div class="ai-in card stack"><div id="ap"></div><div class="row"><label class="chip" style="cursor:pointer">Screenshot<input type="file" accept="image/*" hidden onchange="aiShot(this)"></label><textarea id="aq" rows="1" placeholder="Tanya soal trade, setup, atau risk management"></textarea><button class="btn" onclick="aiSend()">Kirim</button></div></div>`}
+function paintChat(){const c=q("#chat");if(!c)return;const w=[{r:"assistant",t:"Halo. Kirim screenshot chart atau tanyakan apa saja soal trading dan jurnalmu. Saya bisa menilai setup, risk-reward, dan pola dari data trade kamu. Ini bukan nasihat keuangan."}];
+c.innerHTML=(CH.length?CH:w).map(m=>`<div class="msg ${m.r}">${m.img?`<img src="${m.img}" alt="Screenshot">`:m.i?`<div class="mu sm">[Screenshot terlampir]</div>`:""}<div class="mt">${md(m.t)}</div></div>`).join("")+(AI.busy?`<div class="msg assistant mu">AI sedang menganalisa...</div>`:"")}
+const prevH=()=>`<div class="row"><img src="${AI.img}" alt="Screenshot" style="max-height:80px;border-radius:8px"><button class="chip" onclick="AI.img=null;q('#ap').innerHTML=''">Hapus</button></div>`;
+function aiShot(i){const f=i.files[0];i.value="";if(!f)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,1280/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);AI.img=c.toDataURL("image/jpeg",.75);q("#ap").innerHTML=prevH()};im.src=r.result};r.readAsDataURL(f)}
+function jctx(){const ts=T(),s=stats(ts),S=D.settings,rec=[...ts].sort((a,b)=>new Date(b.openTime)-new Date(a.openTime)).slice(0,20).map(t=>`${t.openTime.slice(0,10)} ${t.asset} ${t.side} entry ${t.entry} sl ${t.sl??"-"} tp ${t.tp??"-"} lot ${t.mode=="lot"?t.size:"-"} ${t.open?"OPEN":t.exitType.toUpperCase()+" pnl "+t.pnl.toFixed(2)+" pips "+t.pips.toFixed(1)}${t.notes?" catatan: "+t.notes.slice(0,80):""}`);
+return `Data jurnal (mata uang ${S.cur}, saldo awal ${S.balance}): closed ${s.n}, win rate ${s.wr.toFixed(1)}%, total P&L ${s.pnl.toFixed(2)}, profit factor ${pf(s.pf)}, avg R:R ${s.rr.toFixed(2)}, avg win ${s.aw.toFixed(2)}, avg loss ${s.al.toFixed(2)}, open ${s.open}.\n20 trade terakhir:\n`+rec.join("\n")}
+function aiQ(t){if(/screenshot/i.test(t)&&!AI.img)return toast("Lampirkan screenshot chart dulu");aiSend(t)}
+async function aiSend(t){if(AI.busy)return;const el=q("#aq"),txt=(t||el.value).trim(),img=AI.img;if(!txt&&!img)return;
+if(!G.key){toast("Isi Groq API key di Settings dulu");return go("settings")}
+CH.push({r:"user",t:txt||"Tolong analisa screenshot ini.",img});el.value="";AI.img=null;AI.busy=true;q("#ap").innerHTML="";paintChat();scrollTo(0,document.body.scrollHeight);
+try{const hist=CH.filter(m=>!m.err).slice(-12);let li=-1;hist.forEach((m,i)=>{if(m.img)li=i});
+const msgs=[{role:"system",content:SYS+(G.ctx?"\n\n"+jctx():"")},...hist.map((m,i)=>({role:m.r,content:m.img&&i==li?[{type:"text",text:m.t},{type:"image_url",image_url:{url:m.img}}]:m.t}))];
+const r=await fetch(API+"/chat/completions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+G.key},body:JSON.stringify({model:G.model,messages:msgs,temperature:.6,max_completion_tokens:4096})});
+const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error((j.error&&j.error.message)||"HTTP "+r.status);
+const a=String(j.choices&&j.choices[0]&&j.choices[0].message.content||"").replace(/<think>[\s\S]*?(<\/think>|$)/g,"").trim();
+CH.push({r:"assistant",t:a||"(Jawaban kosong)"})}catch(e){const nv=img&&/must be a string|not support.*(image|vision)/i.test(e.message);
+if(nv){CH.pop();AI.img=img;if(q("#aq"))q("#aq").value=txt;if(q("#ap"))q("#ap").innerHTML=prevH()}
+CH.push({r:"assistant",t:nv?"Model "+G.model+" tidak mendukung gambar, jadi screenshot ditolak Groq. Ganti model di Settings ke model vision (contoh: qwen/qwen3.8-27b; daftar terbaru di console.groq.com/docs/vision). Screenshot dan pertanyaanmu sudah dikembalikan ke kolom input, tinggal kirim ulang.":"Gagal memanggil Groq: "+errM(e),err:1})}
+AI.busy=false;saveCh();paintChat();scrollTo(0,document.body.scrollHeight)}
+function clrCh(){ask("Hapus seluruh percakapan AI?",()=>{CH=[];saveCh();paintChat()})}
 /* ---- router ---- */
 const go=v=>{V=v;render();scrollTo(0,0)};
-function render(){q("#app").innerHTML=({dashboard:dash,history:hist,analytics:ana,backup:bak,settings:sett})[V]();document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.v==V));q("#fab").hidden=V=="backup"||V=="settings"}
+function render(){q("#app").innerHTML=({dashboard:dash,history:hist,analytics:ana,backup:bak,settings:sett,ai:ai})[V]();document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.v==V));q("#fab").hidden=["backup","settings","ai"].includes(V);if(V=="ai")paintChat()}
 render();
